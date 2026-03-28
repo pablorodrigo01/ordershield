@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: ./docker/php
+    container_name: ordershield_app
+    working_dir: /var/www
+    volumes:
+      - ./src:/var/www
+    depends_on:
+      - mysql
+      - redis
+
+  nginx:
+    image: nginx:alpine
+    container_name: ordershield_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./src:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+
+  mysql:
+    image: mysql:8.4
+    container_name: ordershield_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ordershield
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: ordershield
+      MYSQL_PASSWORD: ordershield
+      TZ: America/Sao_Paulo
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: ordershield_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+volumes:
+  mysql_data:
