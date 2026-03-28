@@ -16,6 +16,7 @@ class StoreCustomerRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:customers,email'],
+            'cellphone' => ['required', 'string', 'max:20', 'unique:customers,cellphone'],
             'document' => ['required', 'string', 'max:20', 'unique:customers,document'],
             'last_access_at' => ['nullable', 'date'],
             'addresses' => ['nullable', 'array'],

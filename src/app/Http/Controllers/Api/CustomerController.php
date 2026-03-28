@@ -30,6 +30,7 @@ class CustomerController extends Controller
             $customer = Customer::create([
                 'name' => $request->string('name')->toString(),
                 'email' => $request->string('email')->toString(),
+                'cellphone' => $request->string('cellphone')->toString(),
                 'document' => $request->string('document')->toString(),
                 'last_access_at' => $request->input('last_access_at'),
             ]);
