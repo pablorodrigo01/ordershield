@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\DB;
 
 class RiskAnalysisService
 {
+
+    public function __construct(protected AuditLogService $auditLogService)
+    {
+    }
+
     public function analyze(string $orderId): RiskAnalysis
     {
         $order = Order::with('customer')->findOrFail($orderId);
@@ -61,18 +66,18 @@ class RiskAnalysisService
                 'status' => $status,
             ]);
 
-            AuditLog::create([
-                'user_id' => null,
-                'action' => 'order.analyzed',
-                'entity_type' => 'order',
-                'entity_id' => $order->id,
-                'metadata' => [
+            $this->auditLogService->log(
+                action: 'order.analyzed',
+                entityType: 'order',
+                entityId: $order->id,
+                metadata: [
                     'score' => $score,
                     'classification' => $classification->value,
                     'status' => $status->value,
                     'reasons' => $reasons,
                 ],
-            ]);
+                userId: null
+            );
 
             return $analysis;
         });

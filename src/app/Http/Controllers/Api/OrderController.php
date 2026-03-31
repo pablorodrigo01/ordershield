@@ -9,9 +9,18 @@ use App\Jobs\AnalyzeOrderRiskJob;
 use App\Models\Address;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
+use App\Models\AuditLog;
+use App\Services\AuditLogService;
+use App\Http\Resources\Api\AuditLogResource;
+use App\Http\Resources\Api\OrderResource;
+use App\Http\Resources\Api\RiskAnalysisResource;
 
 class OrderController extends Controller
 {
+    public function __construct(protected AuditLogService $auditLogService)
+    {
+    }
+
     public function index(): JsonResponse
     {
         $orders = Order::with(['customer', 'address', 'riskAnalysis'])->paginate(10);
@@ -40,11 +49,53 @@ class OrderController extends Controller
             'source' => $request->string('source')->toString(),
         ]);
 
+        $this->auditLogService->log(
+            action: 'order.created',
+            entityType: 'order',
+            entityId: $order->id,
+            metadata: [
+                'customer_id' => $order->customer_id,
+                'address_id' => $order->address_id,
+                'total_amount' => (float) $order->total_amount,
+                'status' => $order->status->value,
+                'source' => $order->source,
+            ]
+        );
+
         AnalyzeOrderRiskJob::dispatch($order->id);
 
+        $order->load(['customer', 'address']);
+
+        return response()->json(new OrderResource($order), 201);
+    }
+
+    public function analysis(string $id): JsonResponse
+    {
+        $order = Order::with('riskAnalysis')->findOrFail($id);
+
+        if (!$order->riskAnalysis) {
+            return response()->json([
+                'message' => 'Análise de risco ainda não disponível.'
+            ], 404);
+        }
+
         return response()->json(
-            $order->load(['customer', 'address']),
-            201
+            new RiskAnalysisResource($order->riskAnalysis)
+        );
+    }
+
+    public function auditLogs(string $id): JsonResponse
+    {
+        Order::findOrFail($id);
+
+        $logs = AuditLog::query()
+            ->where('entity_type', 'order')
+            ->where('entity_id', $id)
+            ->latest()
+            ->get();
+
+        return response()->json(
+            AuditLogResource::collection($logs)
         );
     }
 }

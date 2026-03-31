@@ -7,9 +7,16 @@ use App\Http\Requests\Api\StoreCustomerRequest;
 use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use App\Services\AuditLogService;
+use App\Http\Resources\Api\CustomerResource;
 
 class CustomerController extends Controller
 {
+
+    public function __construct(protected AuditLogService $auditLogService)
+    {
+    }
+
     public function index(): JsonResponse
     {
         $customers = Customer::with('addresses')->paginate(10);
@@ -41,6 +48,16 @@ class CustomerController extends Controller
 
             return $customer->load('addresses');
         });
+
+        $this->auditLogService->log(
+            action: 'customer.created',
+            entityType: 'customer',
+            entityId: $customer->id,
+            metadata: [
+                'email' => $customer->email,
+                'document' => $customer->document,
+            ]
+        );
 
         return response()->json($customer, 201);
     }
