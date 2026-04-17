@@ -4,54 +4,47 @@ namespace App\Services;
 
 use App\Enums\OrderStatusEnum;
 use App\Enums\RiskClassificationEnum;
-use App\Models\AuditLog;
 use App\Models\Order;
 use App\Models\RiskAnalysis;
-use Carbon\Carbon;
+use App\Services\RiskRules\HighAmountRule;
+use App\Services\RiskRules\RecentCustomerRule;
+use App\Services\RiskRules\SuspiciousEmailRule;
 use Illuminate\Support\Facades\DB;
 
 class RiskAnalysisService
 {
-
-    public function __construct(protected AuditLogService $auditLogService)
-    {
+    public function __construct(
+        protected AuditLogService $auditLogService
+    ) {
     }
 
     public function analyze(string $orderId): RiskAnalysis
     {
         $order = Order::with('customer')->findOrFail($orderId);
 
+        $rules = [
+            new HighAmountRule(),
+            new RecentCustomerRule(),
+            new SuspiciousEmailRule(),
+        ];
+
         $score = 0;
         $reasons = [];
 
-        if ((float) $order->total_amount > 5000) {
-            $score += 30;
-            $reasons[] = 'Pedido acima de 5000';
-        }
+        foreach ($rules as $rule) {
+            $result = $rule->handle($order);
 
-        if ($order->customer && $order->customer->created_at->greaterThan(Carbon::now()->subDays(7))) {
-            $score += 20;
-            $reasons[] = 'Cliente criado recentemente';
-        }
+            if (! $result) {
+                continue;
+            }
 
-        $recentOrdersCount = Order::query()
-            ->where('customer_id', $order->customer_id)
-            ->where('created_at', '>=', Carbon::now()->subHour())
-            ->count();
-
-        if ($recentOrdersCount >= 3) {
-            $score += 20;
-            $reasons[] = 'Múltiplos pedidos em curto intervalo';
-        }
-
-        if ($this->hasSuspiciousEmail($order->customer->email ?? null)) {
-            $score += 15;
-            $reasons[] = 'E-mail suspeito';
+            $score += $result['score'];
+            $reasons[] = $result['reason'];
         }
 
         [$classification, $status] = $this->resolveClassificationAndStatus($score);
 
-        return DB::transaction(function () use ($order, $score, $classification, $status, $reasons) {
+        return DB::transaction(function () use ($order, $score, $reasons, $classification, $status) {
             $analysis = RiskAnalysis::updateOrCreate(
                 ['order_id' => $order->id],
                 [
@@ -90,29 +83,5 @@ class RiskAnalysisService
             $score >= 30 => [RiskClassificationEnum::MEDIUM, OrderStatusEnum::UNDER_REVIEW],
             default => [RiskClassificationEnum::LOW, OrderStatusEnum::APPROVED],
         };
-    }
-
-    private function hasSuspiciousEmail(?string $email): bool
-    {
-        if (!$email) {
-            return false;
-        }
-
-        $suspiciousPatterns = [
-            'test',
-            'fake',
-            'spam',
-            'temp',
-        ];
-
-        $email = mb_strtolower($email);
-
-        foreach ($suspiciousPatterns as $pattern) {
-            if (str_contains($email, $pattern)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

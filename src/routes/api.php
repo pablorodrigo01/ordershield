@@ -1,9 +1,10 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\OrderController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\MetricsController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -20,5 +21,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/{id}/analysis', [OrderController::class, 'analysis']);
         Route::get('/{id}/audit-logs', [OrderController::class, 'auditLogs']);
+
+        Route::post('/{id}/approve', [OrderController::class, 'approve']);
+        Route::post('/{id}/block', [OrderController::class, 'block']);
+        Route::post('/{id}/under-review', [OrderController::class, 'underReview']);
     });
+
+    Route::get('/metrics', [MetricsController::class, 'index']);
 });

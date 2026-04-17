@@ -8,12 +8,17 @@ use App\Http\Requests\Api\StoreOrderRequest;
 use App\Jobs\AnalyzeOrderRiskJob;
 use App\Models\Address;
 use App\Models\Order;
+use Illuminate\Http\Client\ResponseSequence;
 use Illuminate\Http\JsonResponse;
 use App\Models\AuditLog;
 use App\Services\AuditLogService;
 use App\Http\Resources\Api\AuditLogResource;
 use App\Http\Resources\Api\OrderResource;
 use App\Http\Resources\Api\RiskAnalysisResource;
+use App\Http\Requests\Api\ApproveOrderRequest;
+use App\Http\Requests\Api\BlockOrderRequest;
+use App\Http\Requests\Api\UnderReviewOrderRequest;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -67,6 +72,96 @@ class OrderController extends Controller
         $order->load(['customer', 'address']);
 
         return response()->json(new OrderResource($order), 201);
+    }
+
+    public function approve(string $id, ApproveOrderRequest $request): JsonResponse
+    {
+        $order = Order::findOrFail($id);
+
+        if ($order->status !== OrderStatusEnum::UNDER_REVIEW) {
+            return response()->json([
+                'message' => 'Somente pedidos em revisão podem ser aprovados manualmente.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($order, $request) {
+            $order->update([
+                'status' => OrderStatusEnum::APPROVED,
+            ]);
+
+            $this->auditLogService->log(
+                action: 'order.approved',
+                entityType: 'order',
+                entityId: $order->id,
+                metadata: [
+                    'reason' => $request->string('reason')->toString(),
+                ]
+            );
+        });
+
+        $order->load(['customer', 'address', 'riskAnalysis']);
+
+        return response()->json(new OrderResource($order));
+    }
+
+    public function block(string $id, BlockOrderRequest $request): JsonResponse
+    {
+        $order = Order::findOrFail($id);
+
+        if ($order->status !== OrderStatusEnum::UNDER_REVIEW) {
+            return response()->json([
+                'message' => 'Somente pedidos em revisão  podem ser aprovados manualmente.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($order, $request) {
+            $order->update([
+                'status' => OrderStatusEnum::APPROVED,
+            ]);
+
+            $this->auditLogService->log(
+                action: 'order.blocked_manual',
+                entityType: 'order',
+                entityId: $order->id,
+                metadata: [
+                    'reason' => $request->string('reason')->toString(),
+                ]
+            );
+        });
+
+        $order->load(['customer', 'address', 'riskAnalysis']);
+
+        return response()->json(new OrderResource($order));
+    }
+
+    public function underReview(string $id, UnderReviewOrderRequest $request): JsonResponse
+    {
+        $order = Order::findOrFail($id);
+
+        if ($order->status === OrderStatusEnum::UNDER_REVIEW) {
+            return response()->json([
+                'message' => 'O pedido já está em revisão.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($order, $request) {
+            $order->update([
+                'status' => OrderStatusEnum::UNDER_REVIEW,
+            ]);
+
+            $this->auditLogService->log(
+                action: 'order.sent_to_under_review',
+                entityType: 'order',
+                entityId: $order->id,
+                metadata: [
+                    'reason' => $request->string('reason')->toString(),
+                ]
+            );
+        });
+
+        $order->load(['customer', 'address', 'riskAnalysis']);
+
+        return response()->json(new OrderResource($order));
     }
 
     public function analysis(string $id): JsonResponse
