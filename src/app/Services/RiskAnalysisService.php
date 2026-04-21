@@ -6,9 +6,11 @@ use App\Enums\OrderStatusEnum;
 use App\Enums\RiskClassificationEnum;
 use App\Models\Order;
 use App\Models\RiskAnalysis;
-use App\Services\RiskRules\HighAmountRule;
-use App\Services\RiskRules\RecentCustomerRule;
-use App\Services\RiskRules\SuspiciousEmailRule;
+use App\Services\RiskEngine\RiskEngine;
+use App\Services\RiskEngine\Rules\HighAmountRule;
+use App\Services\RiskEngine\Rules\ManyRecentOrdersRule;
+use App\Services\RiskEngine\Rules\RecentCustomerRule;
+use App\Services\RiskEngine\Rules\SuspiciousEmailRule;
 use Illuminate\Support\Facades\DB;
 
 class RiskAnalysisService
@@ -22,29 +24,23 @@ class RiskAnalysisService
     {
         $order = Order::with('customer')->findOrFail($orderId);
 
-        $rules = [
+        $engine = new RiskEngine([
             new HighAmountRule(),
             new RecentCustomerRule(),
             new SuspiciousEmailRule(),
-        ];
+            new ManyRecentOrdersRule(),
+        ]);
 
-        $score = 0;
-        $reasons = [];
+        $evaluation = $engine->evaluate($order);
 
-        foreach ($rules as $rule) {
-            $result = $rule->handle($order);
-
-            if (! $result) {
-                continue;
-            }
-
-            $score += $result['score'];
-            $reasons[] = $result['reason'];
-        }
+        $score = $evaluation['score'];
+        $results = $evaluation['results'];
+        $reasons = array_map(fn($result) => $result->reason, $results);
+        $ruleCodes = array_map(fn($result) => $result->code, $results);
 
         [$classification, $status] = $this->resolveClassificationAndStatus($score);
 
-        return DB::transaction(function () use ($order, $score, $reasons, $classification, $status) {
+        return DB::transaction(function () use ($order, $score, $classification, $status, $reasons, $ruleCodes) {
             $analysis = RiskAnalysis::updateOrCreate(
                 ['order_id' => $order->id],
                 [
@@ -68,6 +64,7 @@ class RiskAnalysisService
                     'classification' => $classification->value,
                     'status' => $status->value,
                     'reasons' => $reasons,
+                    'rule_codes' => $ruleCodes,
                 ],
                 userId: null
             );

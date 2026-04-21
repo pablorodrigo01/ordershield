@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Services\RiskRules;
+namespace App\Services\RiskEngine\Rules;
 
+use App\DTOs\RiskRuleResult;
 use App\Models\Order;
-use App\Services\RiskRules\Contracts\RiskRuleInterface;
+use App\Services\RiskEngine\Contracts\RiskRuleInterface;
 
 class SuspiciousEmailRule implements RiskRuleInterface
 {
-    public function handle(Order $order): ?array
+    public function evaluate(Order $order): ?RiskRuleResult
     {
         $email = mb_strtolower($order->customer?->email ?? '');
 
@@ -19,14 +20,14 @@ class SuspiciousEmailRule implements RiskRuleInterface
 
         foreach ($patterns as $pattern) {
             if (str_contains($email, $pattern)) {
-                return [
-                    'score' => 15,
-                    'reason' => 'E-mail suspeito',
-                ];
+                return new RiskRuleResult(
+                    score: 15,
+                    reason: 'E-mail suspeito',
+                    code: 'suspicious_email',
+                );
             }
         }
 
         return null;
-
     }
 }
