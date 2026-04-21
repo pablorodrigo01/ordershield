@@ -17,6 +17,11 @@ class CustomerController extends Controller
     {
     }
 
+    /**
+     * Lista os clientes.
+     *
+     * @authenticated
+     */
     public function index(): JsonResponse
     {
         $customers = Customer::with('addresses')->paginate(10);
@@ -24,6 +29,11 @@ class CustomerController extends Controller
         return response()->json($customers);
     }
 
+    /**
+     * Exibe um cliente pelo ID.
+     *
+     * @authenticated
+     */
     public function show(string $id): JsonResponse
     {
         $customer = Customer::with('addresses')->findOrFail($id);
@@ -31,6 +41,11 @@ class CustomerController extends Controller
         return response()->json($customer);
     }
 
+    /**
+     * Cria um novo cliente.
+     *
+     * @authenticated
+     */
     public function store(StoreCustomerRequest $request): JsonResponse
     {
         $customer = DB::transaction(function () use ($request) {

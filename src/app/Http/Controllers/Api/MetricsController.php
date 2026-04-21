@@ -10,6 +10,11 @@ use App\Enums\OrderStatusEnum;
 
 class MetricsController extends Controller
 {
+    /**
+     * Retorna métricas gerais da API.
+     *
+     * @authenticated
+     */
     public function index(): JsonResponse
     {
         $totalOrders = Order::count();

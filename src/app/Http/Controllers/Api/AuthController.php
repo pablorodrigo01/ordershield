@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    /**
+     * Registra um novo usuário.
+     *
+     * @unauthenticated
+     */
     public function register(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -27,6 +32,11 @@ class AuthController extends Controller
         return response()->json($user, 201);
     }
 
+    /**
+     * Realiza login e retorna um token.
+     *
+     * @unauthenticated
+     */
     public function login(Request $request): JsonResponse
     {
         $data = $request->validate([

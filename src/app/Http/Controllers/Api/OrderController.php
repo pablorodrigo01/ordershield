@@ -26,6 +26,11 @@ class OrderController extends Controller
     {
     }
 
+    /**
+     * Retorna pedidos gerais da API.
+     *
+     * @authenticated
+     */
     public function index(): JsonResponse
     {
         $orders = Order::with(['customer', 'address', 'riskAnalysis'])->paginate(10);
@@ -33,6 +38,11 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
+    /**
+     * Retorna pedido específico da API.
+     *
+     * @authenticated
+     */
     public function show(string $id): JsonResponse
     {
         $order = Order::with(['customer', 'address', 'riskAnalysis'])->findOrFail($id);
@@ -40,6 +50,11 @@ class OrderController extends Controller
         return response()->json($order);
     }
 
+    /**
+     * Cria um novo pedido.
+     *
+     * @authenticated
+     */
     public function store(StoreOrderRequest $request): JsonResponse
     {
         $address = Address::where('id', $request->input('address_id'))
@@ -74,6 +89,11 @@ class OrderController extends Controller
         return response()->json(new OrderResource($order), 201);
     }
 
+    /**
+     * Aprova manualmente um pedido em revisão.
+     *
+     * @authenticated
+     */
     public function approve(string $id, ApproveOrderRequest $request): JsonResponse
     {
         $order = Order::findOrFail($id);
@@ -104,13 +124,18 @@ class OrderController extends Controller
         return response()->json(new OrderResource($order));
     }
 
+    /**
+     * Bloqueia manualmente um pedido em revisão.
+     *
+     * @authenticated
+     */
     public function block(string $id, BlockOrderRequest $request): JsonResponse
     {
         $order = Order::findOrFail($id);
 
         if ($order->status !== OrderStatusEnum::UNDER_REVIEW) {
             return response()->json([
-                'message' => 'Somente pedidos em revisão  podem ser aprovados manualmente.'
+                'message' => 'Somente pedidos em revisão podem ser aprovados manualmente.'
             ], 422);
         }
 
@@ -134,6 +159,11 @@ class OrderController extends Controller
         return response()->json(new OrderResource($order));
     }
 
+    /**
+     * Altera manualmente um pedido para revisão.
+     *
+     * @authenticated
+     */
     public function underReview(string $id, UnderReviewOrderRequest $request): JsonResponse
     {
         $order = Order::findOrFail($id);
@@ -164,6 +194,11 @@ class OrderController extends Controller
         return response()->json(new OrderResource($order));
     }
 
+    /**
+     * Retorna a análise de risco de um pedido.
+     *
+     * @authenticated
+     */
     public function analysis(string $id): JsonResponse
     {
         $order = Order::with('riskAnalysis')->findOrFail($id);
@@ -179,6 +214,11 @@ class OrderController extends Controller
         );
     }
 
+    /**
+     * Retorna Log de um pedido específico da API.
+     *
+     * @authenticated
+     */
     public function auditLogs(string $id): JsonResponse
     {
         Order::findOrFail($id);
