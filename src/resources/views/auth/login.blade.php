@@ -1,11 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="card" style="max-width:400px;margin:auto;">
-        <h2>Login</h2>
+    <div class="card form-card">
+        <h1 class="form-title">Entrar</h1>
+        <p class="form-subtitle">Acesse o painel do OrderShield com seu e-mail e senha.</p>
 
         @if ($errors->any())
-            <div style="color:red;">
+            <div class="alert alert-danger">
                 {{ $errors->first() }}
             </div>
         @endif
@@ -13,19 +14,17 @@
         <form method="POST" action="/login">
             @csrf
 
-            <div>
-                <label>Email</label>
-                <input type="email" name="email" required style="width:100%;">
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input id="email" type="email" name="email" required autocomplete="username">
             </div>
 
-            <div>
-                <label>Senha</label>
-                <input type="password" name="password" required style="width:100%;">
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input id="password" type="password" name="password" required autocomplete="current-password">
             </div>
 
-            <br>
-
-            <button type="submit">Entrar</button>
+            <button type="submit" class="btn btn-block">Entrar</button>
         </form>
     </div>
 @endsection

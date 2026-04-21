@@ -1,21 +1,45 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="container">
-        <h1>Dashboard OrderShield</h1>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Resumo dos pedidos e análises de risco mais recentes.</p>
 
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
-            <div><strong>Total:</strong> {{ $totalOrders }}</div>
-            <div><strong>Aprovados:</strong> {{ $approvedOrders }}</div>
-            <div><strong>Em revisão:</strong> {{ $underReviewOrders }}</div>
-            <div><strong>Bloqueados:</strong> {{ $blockedOrders }}</div>
-            <div><strong>Pendentes:</strong> {{ $pendingOrders }}</div>
-            <div><strong>Score médio:</strong> {{ $averageRiskScore }}</div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total de pedidos</div>
+            <div class="stat-value">{{ $totalOrders }}</div>
         </div>
 
-        <h2>Últimos pedidos</h2>
+        <div class="stat-card">
+            <div class="stat-label">Aprovados</div>
+            <div class="stat-value">{{ $approvedOrders }}</div>
+        </div>
 
-        <table border="1" cellpadding="10" cellspacing="0" width="100%">
+        <div class="stat-card">
+            <div class="stat-label">Em revisão</div>
+            <div class="stat-value">{{ $underReviewOrders }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Bloqueados</div>
+            <div class="stat-value">{{ $blockedOrders }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Pendentes</div>
+            <div class="stat-value">{{ $pendingOrders }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Score médio</div>
+            <div class="stat-value">{{ $averageRiskScore }}</div>
+        </div>
+    </div>
+
+    <h2 class="section-title">Últimos pedidos</h2>
+
+    <div class="table-wrapper">
+        <table>
             <thead>
                 <tr>
                     <th>ID</th>
@@ -27,17 +51,50 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($recentOrders as $order)
+                @forelse($recentOrders as $order)
                     <tr>
-                        <td>{{ $order->id }}</td>
-                        <td>{{ $order->customer?->name }}</td>
-                        <td>{{ $order->status->value ?? $order->status }}</td>
+                        <td>#{{ $order->id }}</td>
+                        <td>{{ $order->customer?->name ?? 'Não informado' }}</td>
+                        <td>
+                            @php
+                                $status = strtolower($order->status->value ?? $order->status ?? '');
+                            @endphp
+
+                            <span class="badge
+                                        @if(str_contains($status, 'aprov')) badge-success
+                                        @elseif(str_contains($status, 'revis')) badge-warning
+                                        @elseif(str_contains($status, 'bloque')) badge-danger
+                                        @else badge-neutral
+                                        @endif
+                                    ">
+                                {{ $order->status->value ?? $order->status ?? '-' }}
+                            </span>
+                        </td>
                         <td>R$ {{ number_format((float) $order->total_amount, 2, ',', '.') }}</td>
                         <td>{{ $order->riskAnalysis?->score ?? '-' }}</td>
-                        <td>{{ $order->riskAnalysis?->classification?->value ?? $order->riskAnalysis?->classification ?? '-' }}
+                        <td>
+                            @php
+                                $classification = strtolower($order->riskAnalysis?->classification?->value ?? $order->riskAnalysis?->classification ?? '');
+                            @endphp
+
+                            <span class="badge
+                                        @if(str_contains($classification, 'baixo')) badge-success
+                                        @elseif(str_contains($classification, 'médio') || str_contains($classification, 'medio')) badge-warning
+                                        @elseif(str_contains($classification, 'alto')) badge-danger
+                                        @else badge-neutral
+                                        @endif
+                                    ">
+                                {{ $order->riskAnalysis?->classification?->value ?? $order->riskAnalysis?->classification ?? '-' }}
+                            </span>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="6" class="muted" style="text-align:center;padding:24px;">
+                            Nenhum pedido encontrado.
+                        </td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
